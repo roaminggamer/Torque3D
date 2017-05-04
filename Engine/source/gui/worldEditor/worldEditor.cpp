@@ -47,7 +47,7 @@
 #include "platform/typetraits.h"
 #include "T3D/prefab.h"
 #include "math/mEase.h"
-
+#include "T3D/tsStatic.h"
 
 
 IMPLEMENT_CONOBJECT( WorldEditor );
@@ -68,7 +68,8 @@ ImplementEnumType( WorldEditorDropType,
    { WorldEditor::DropAtScreenCenter,     "screenCenter",   "Places at a position projected outwards from the screen's center.\n"    },
    { WorldEditor::DropAtCentroid,         "atCentroid",     "Places at the center position of the current centroid.\n"      },
    { WorldEditor::DropToTerrain,          "toTerrain",      "Places on the terrain.\n"       },
-   { WorldEditor::DropBelowSelection,     "belowSelection", "Places at a position below the selected object.\n"  }
+   { WorldEditor::DropBelowSelection,     "belowSelection", "Places at a position below the selected object.\n"  },
+   { WorldEditor::DropAtGizmo,            "atGizmo",        "Places at the gizmo point.\n"  }
 EndImplementEnumType;
 
 ImplementEnumType( WorldEditorAlignmentType,
@@ -643,10 +644,10 @@ void WorldEditor::dropSelection(Selection*  sel)
             Point3F offset = -boxCenter;
             offset.z += bounds.len_z() * 0.5f;
 
-            sel->offset( offset, mGridSnap ? mGridPlaneSize : 0.f );
+            sel->offset(offset, (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
          }
          else
-            sel->offset( Point3F( -centroid ), mGridSnap ? mGridPlaneSize : 0.f );
+            sel->offset(Point3F(-centroid), (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
 
          break;
       }
@@ -657,7 +658,7 @@ void WorldEditor::dropSelection(Selection*  sel)
          if(mDropAtBounds && !sel->containsGlobalBounds())
             center = sel->getBoxBottomCenter();
 
-         sel->offset( Point3F( smCamPos - center ), mGridSnap ? mGridPlaneSize : 0.f );
+         sel->offset(Point3F(smCamPos - center), (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
          sel->orient(smCamMatrix, center);
          break;
       }
@@ -668,7 +669,7 @@ void WorldEditor::dropSelection(Selection*  sel)
          if(mDropAtBounds && !sel->containsGlobalBounds())
             sel->getBoxBottomCenter();
 
-         sel->offset( Point3F( smCamPos - center ), mGridSnap ? mGridPlaneSize : 0.f );
+         sel->offset(Point3F(smCamPos - center), (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
          break;
       }
 
@@ -680,7 +681,7 @@ void WorldEditor::dropSelection(Selection*  sel)
 
          Point3F offset = smCamPos - center;
          offset.z -= mDropBelowCameraOffset;
-         sel->offset( offset, mGridSnap ? mGridPlaneSize : 0.f );
+         sel->offset(offset, (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
          break;
       }
 
@@ -712,7 +713,7 @@ void WorldEditor::dropSelection(Selection*  sel)
          event.vec = wp - smCamPos;
          event.vec.normalizeSafe();
          event.vec *= viewdist;
-         sel->offset( Point3F( event.pos - center ) += event.vec, mGridSnap ? mGridPlaneSize : 0.f );
+         sel->offset(Point3F(event.pos - center) += event.vec, (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
 
          break;
       }
@@ -728,10 +729,24 @@ void WorldEditor::dropSelection(Selection*  sel)
          dropBelowSelection(sel, centroid, mDropAtBounds);
          break;
       }
+
+      case DropAtGizmo:
+      {
+         dropAtGizmo(sel, mGizmo->getPosition()-centroid);
+         break;
+      }
    }
 
    //
    updateClientTransforms(sel);
+}
+
+void WorldEditor::dropAtGizmo(Selection*  sel, const Point3F & gizmoPos)
+{
+   if (!sel->size())
+      return;
+
+   sel->offset(gizmoPos, (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
 }
 
 void WorldEditor::dropBelowSelection(Selection*  sel, const Point3F & centroid, bool useBottomBounds)
@@ -756,7 +771,7 @@ void WorldEditor::dropBelowSelection(Selection*  sel, const Point3F & centroid, 
    sel->enableCollision();
 
    if( hit )
-      sel->offset( ri.point - start, mGridSnap ? mGridPlaneSize : 0.f );
+      sel->offset(ri.point - start, (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
 }
 
 //------------------------------------------------------------------------------
@@ -800,7 +815,7 @@ void WorldEditor::terrainSnapSelection(Selection* sel, U8 modifier, Point3F gizm
    {
       mStuckToGround = true;
 
-      sel->offset( ri.point - centroid, mGridSnap ? mGridPlaneSize : 0.f );
+      sel->offset(ri.point - centroid, (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
 
       if(mTerrainSnapAlignment != AlignNone)
       {
@@ -1026,7 +1041,7 @@ void WorldEditor::softSnapSelection(Selection* sel, U8 modifier, Point3F gizmoPo
       if ( minT <= 1.0f )
          foundPoint += ( end - start ) * (0.5f - minT);
 
-      sel->offset( foundPoint - sel->getCentroid(), mGridSnap ? mGridPlaneSize : 0.f );
+      sel->offset(foundPoint - sel->getCentroid(), (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
    }
 
    mSoftSnapIsStuck = found;
@@ -1805,7 +1820,7 @@ WorldEditor::WorldEditor()
    mSoftSnapDebugPoint.set(0.0f, 0.0f, 0.0f);
    
    mGridSnap = false;
-   
+   mUseGroupCenter = true;
    mFadeIcons = true;
    mFadeIconsDist = 8.f;
 }
@@ -2254,7 +2269,7 @@ void WorldEditor::on3DMouseDragged(const Gui3DMouseEvent & event)
             mGizmo->getProfile()->snapToGrid = snapToGrid;
          }
 
-         mSelected->offset( mGizmo->getOffset() );
+         mSelected->offset(mGizmo->getOffset(), (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
 
          // Handle various sticking
          terrainSnapSelection( mSelected, event.modifier, mGizmo->getPosition() );
@@ -2686,7 +2701,8 @@ void WorldEditor::initPersistFields()
    addGroup( "Grid" );
    
       addField( "gridSnap",               TypeBool,   Offset( mGridSnap, WorldEditor ),
-         "If true, transform operations will snap to the grid." );
+         "If true, transform operations will snap to the grid.");
+      addField("useGroupCenter", TypeBool, Offset(mUseGroupCenter, WorldEditor));
    
    endGroup( "Grid" );
    
@@ -3035,7 +3051,7 @@ void WorldEditor::transformSelection(bool position, Point3F& p, bool relativePos
    {
       if( relativePos )
       {
-         mSelected->offset( p, mGridSnap ? mGridPlaneSize : 0.f );
+         mSelected->offset(p, (!mUseGroupCenter && mGridSnap) ? mGridPlaneSize : 0.f);
       }
       else
       {
@@ -3631,7 +3647,18 @@ void WorldEditor::makeSelectionPrefab( const char *filename )
       {
          for ( S32 i = 0; i < grp->size(); i++ )
             stack.push_back( grp->at(i) );
+         
+         SceneObject* scn = dynamic_cast< SceneObject* >(grp);
+         if (scn)
+         {
+            if (Prefab::isValidChild(obj, true))
+               found.push_back(obj);
+         }
+         else
+         {
+            //Only push the cleanup of the group if it's ONLY a SimGroup.
          cleanup.push_back( grp );
+         }
       }
       else
       {
@@ -3742,6 +3769,158 @@ void WorldEditor::explodeSelectedPrefab()
    setDirty();
 }
 
+void WorldEditor::makeSelectionAMesh(const char *filename)
+{
+   if (mSelected->size() == 0)
+   {
+      Con::errorf("WorldEditor::makeSelectionAMesh - Nothing selected.");
+      return;
+   }
+
+   SimGroup *missionGroup;
+   if (!Sim::findObject("MissionGroup", missionGroup))
+   {
+      Con::errorf("WorldEditor::makeSelectionAMesh - Could not find MissionGroup.");
+      return;
+   }
+
+   Vector< SimObject* > stack;
+   Vector< SimObject* > found;
+
+   for (S32 i = 0; i < mSelected->size(); i++)
+   {
+      SimObject *obj = (*mSelected)[i];
+      stack.push_back(obj);
+   }
+
+   Vector< SimGroup* > cleanup;
+
+   while (!stack.empty())
+   {
+      SimObject *obj = stack.last();
+      SimGroup *grp = dynamic_cast< SimGroup* >(obj);
+
+      stack.pop_back();
+
+      if (grp)
+      {
+         for (S32 i = 0; i < grp->size(); i++)
+            stack.push_back(grp->at(i));
+
+         SceneObject* scn = dynamic_cast< SceneObject* >(grp);
+         if (scn)
+         {
+            if (Prefab::isValidChild(obj, true))
+               found.push_back(obj);
+         }
+         else
+         {
+            //Only push the cleanup of the group if it's ONLY a SimGroup.
+            cleanup.push_back(grp);
+         }
+      }
+      else
+      {
+         if (Prefab::isValidChild(obj, true))
+            found.push_back(obj);
+      }
+   }
+
+   if (found.empty())
+   {
+      Con::warnf("WorldEditor::makeSelectionPrefab - No valid objects selected.");
+      return;
+   }
+
+   // SimGroup we collect prefab objects into.
+   SimGroup *group = new SimGroup();
+   group->registerObject();
+
+   // Transform from World to Prefab space.
+   MatrixF fabMat(true);
+   fabMat.setPosition(mSelected->getCentroid());
+   fabMat.inverse();
+
+   MatrixF objMat;
+   SimObject *obj = NULL;
+   SceneObject *sObj = NULL;
+
+   Vector< SceneObject* > objectList;
+
+   for ( S32 i = 0; i < mSelected->size(); i++ )
+   {
+      SceneObject *pObj = dynamic_cast< SceneObject* >( ( *mSelected )[i] );
+      if ( pObj )
+         objectList.push_back( pObj );
+   }
+
+   if ( objectList.empty() )
+      return;
+
+   //
+   Point3F centroid;
+   MatrixF orientation;
+
+   if (objectList.size() == 1)
+   {
+      orientation = objectList[0]->getTransform();
+      centroid = objectList[0]->getPosition();
+   }
+   else
+   {
+      orientation.identity();
+      centroid.zero();
+
+      S32 count = 0;
+
+      for (S32 i = 0; i < objectList.size(); i++)
+      {
+         SceneObject *pObj = objectList[i];
+         if (pObj->isGlobalBounds())
+            continue;
+
+         centroid += pObj->getPosition();
+         count++;
+      }
+
+      centroid /= count;
+   }
+
+   orientation.setPosition(centroid);
+   orientation.inverse();
+
+   OptimizedPolyList polyList;
+   polyList.setBaseTransform(orientation);
+
+   for (S32 i = 0; i < objectList.size(); i++)
+   {
+      SceneObject *pObj = objectList[i];
+      if (!pObj->buildPolyList(PLC_Export, &polyList, pObj->getWorldBox(), pObj->getWorldSphere()))
+         Con::warnf("colladaExportObjectList() - object %i returned no geometry.", pObj->getId());
+   }
+
+   // Use a ColladaUtils function to do the actual export to a Collada file
+   ColladaUtils::exportToCollada(filename, polyList);
+   //
+
+   // Allocate TSStatic object and add to level.
+   TSStatic *ts = new TSStatic();
+   ts->setShapeFileName(StringTable->insert(filename));
+   fabMat.inverse();
+   ts->setTransform(fabMat);
+   ts->registerObject();
+   missionGroup->addObject(ts);
+
+   // Select it, mark level as dirty.
+   clearSelection();
+   selectObject(ts);
+   setDirty();
+
+   // Delete original objects and temporary SimGroup.
+   for (S32 i = 0; i < objectList.size(); i++)
+      objectList[i]->deleteObject();
+}
+
 DefineEngineMethod( WorldEditor, makeSelectionPrefab, void, ( const char* filename ),,
 	"Save selected objects to a .prefab file and replace them in the level with a Prefab object."
 	"@param filename Prefab file to save the selected objects to.")
@@ -3753,6 +3932,13 @@ DefineEngineMethod( WorldEditor, explodeSelectedPrefab, void, (),,
 	"Replace selected Prefab objects with a SimGroup containing all children objects defined in the .prefab.")
 {
    object->explodeSelectedPrefab();
+}
+
+DefineEngineMethod(WorldEditor, makeSelectionAMesh, void, (const char* filename), ,
+   "Save selected objects to a .dae collada file and replace them in the level with a TSStatic object."
+   "@param filename collada file to save the selected objects to.")
+{
+   object->makeSelectionAMesh(filename);
 }
 
 DefineEngineMethod( WorldEditor, mountRelative, void, ( SceneObject *objA, SceneObject *objB ),,

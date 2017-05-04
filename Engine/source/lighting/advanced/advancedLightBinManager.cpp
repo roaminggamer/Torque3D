@@ -29,7 +29,7 @@
 #include "lighting/shadowMap/shadowMapPass.h"
 #include "lighting/shadowMap/lightShadowMap.h"
 #include "lighting/common/lightMapParams.h"
-#include "renderInstance/renderPrePassMgr.h"
+#include "renderInstance/renderDeferredMgr.h"
 #include "gfx/gfxTransformSaver.h"
 #include "scene/sceneManager.h"
 #include "scene/sceneRenderState.h"
@@ -130,7 +130,7 @@ AdvancedLightBinManager::AdvancedLightBinManager( AdvancedLightManager *lm /* = 
    // We want a full-resolution buffer
    mTargetSizeType = RenderTexTargetBinManager::WindowSize;
 
-   mMRTLightmapsDuringPrePass = false;
+   mMRTLightmapsDuringDeferred = false;
 
    Con::NotifyDelegate callback( this, &AdvancedLightBinManager::_deleteLightMaterials );
    Con::addVariableNotify( "$pref::Shadows::filterMode", callback );
@@ -253,7 +253,7 @@ void AdvancedLightBinManager::render( SceneRenderState *state )
       return;
 
    // Clear as long as there isn't MRT population of light buffer with lightmap data
-   if ( !MRTLightmapsDuringPrePass() )
+   if ( !MRTLightmapsDuringDeferred() )
       GFX->clear(GFXClearTarget, ColorI(0, 0, 0, 0), 1.0f, 0);
 
    // Restore transforms
@@ -453,30 +453,7 @@ void AdvancedLightBinManager::_setupPerFrameParameters( const SceneRenderState *
 
    // Perform a camera offset.  We need to manually perform this offset on the sun (or vector) light's
    // polygon, which is at the far plane.
-   const Point2F& projOffset = frustum.getProjectionOffset();
    Point3F cameraOffsetPos = cameraPos;
-   if(!projOffset.isZero())
-   {
-      // First we need to calculate the offset at the near plane.  The projOffset
-      // given above can be thought of a percent as it ranges from 0..1 (or 0..-1).
-      F32 nearOffset = frustum.getNearRight() * projOffset.x;
-
-      // Now given the near plane distance from the camera we can solve the right
-      // triangle and calcuate the SIN theta for the offset at the near plane.
-      // SIN theta = x/y
-      F32 sinTheta = nearOffset / frustum.getNearDist();
-
-      // Finally, we can calcuate the offset at the far plane, which is where our sun (or vector)
-      // light's polygon is drawn.
-      F32 farOffset = frustum.getFarDist() * sinTheta;
-
-      // We can now apply this far plane offset to the far plane itself, which then compensates
-      // for the project offset.
-      MatrixF camTrans = frustum.getTransform();
-      VectorF offset = camTrans.getRightVector();
-      offset *= farOffset;
-      cameraOffsetPos += offset;
-   }
 
    // Now build the quad for drawing full-screen vector light
    // passes.... this is a volatile VB and updates every frame.
@@ -573,23 +550,23 @@ void AdvancedLightBinManager::setupSGData( SceneData &data, const SceneRenderSta
    }
 }
 
-void AdvancedLightBinManager::MRTLightmapsDuringPrePass( bool val )
+void AdvancedLightBinManager::MRTLightmapsDuringDeferred( bool val )
 {
    // Do not enable if the GFX device can't do MRT's
    if ( GFX->getNumRenderTargets() < 2 )
       val = false;
 
-   if ( mMRTLightmapsDuringPrePass != val )
+   if ( mMRTLightmapsDuringDeferred != val )
    {
-      mMRTLightmapsDuringPrePass = val;
+      mMRTLightmapsDuringDeferred = val;
 
-      // Reload materials to cause a feature recalculation on prepass materials
+      // Reload materials to cause a feature recalculation on deferred materials
       if(mLightManager->isActive())
          MATMGR->flushAndReInitInstances();
 
-      RenderPrePassMgr *prepass;
-      if ( Sim::findObject( "AL_PrePassBin", prepass ) && prepass->getTargetTexture( 0 ) )
-         prepass->updateTargets();
+      RenderDeferredMgr *deferred;
+      if ( Sim::findObject( "AL_DeferredBin", deferred ) && deferred->getTargetTexture( 0 ) )
+         deferred->updateTargets();
    }
 }
 
@@ -681,7 +658,7 @@ void AdvancedLightBinManager::LightMaterialInfo::setLightParameters( const Light
    F32 lumiance = mDot(*((const Point3F *)&lightInfo->getColor()), colorToLumiance );
    col.alpha *= lumiance;
 
-   matParams->setSafe( lightColor, col );
+   matParams->setSafe( lightColor, col.toLinear() );
    matParams->setSafe( lightBrightness, lightInfo->getBrightness() );
 
    switch( lightInfo->getType() )
@@ -697,7 +674,7 @@ void AdvancedLightBinManager::LightMaterialInfo::setLightParameters( const Light
          // the vector light. This prevents a divide by zero.
          ColorF ambientColor = renderState->getAmbientLightColor();
          ambientColor.alpha = 0.00001f;
-         matParams->setSafe( lightAmbient, ambientColor );
+         matParams->setSafe( lightAmbient, ambientColor.toLinear() );
 
          // If no alt color is specified, set it to the average of
          // the ambient and main color to avoid artifacts.
@@ -711,7 +688,7 @@ void AdvancedLightBinManager::LightMaterialInfo::setLightParameters( const Light
             lightAlt = (lightInfo->getColor() + renderState->getAmbientLightColor()) / 2.0f;
 
          ColorF trilightColor = lightAlt;
-         matParams->setSafe(lightTrilight, trilightColor);
+         matParams->setSafe(lightTrilight, trilightColor.toLinear());
       }
       break;
 
@@ -857,21 +834,21 @@ bool LightMatInstance::init( const FeatureSet &features, const GFXVertexFormat *
    // in the same way.
    litState.separateAlphaBlendDefined = true;
    litState.separateAlphaBlendEnable = false;
-   litState.stencilMask = RenderPrePassMgr::OpaqueDynamicLitMask | RenderPrePassMgr::OpaqueStaticLitMask;
+   litState.stencilMask = RenderDeferredMgr::OpaqueDynamicLitMask | RenderDeferredMgr::OpaqueStaticLitMask;
    mLitState[DynamicLight] = GFX->createStateBlock(litState);
 
    // StaticLightNonLMGeometry State: This will treat non-lightmapped geometry
    // in the usual way, but will not effect lightmapped geometry.
    litState.separateAlphaBlendDefined = true;
    litState.separateAlphaBlendEnable = false;
-   litState.stencilMask = RenderPrePassMgr::OpaqueDynamicLitMask;
+   litState.stencilMask = RenderDeferredMgr::OpaqueDynamicLitMask;
    mLitState[StaticLightNonLMGeometry] = GFX->createStateBlock(litState);
 
    // StaticLightLMGeometry State: This will add specular information (alpha) but
    // multiply-darken color information. 
    litState.blendDest = GFXBlendSrcColor;
    litState.blendSrc = GFXBlendZero;
-   litState.stencilMask = RenderPrePassMgr::OpaqueStaticLitMask;
+   litState.stencilMask = RenderDeferredMgr::OpaqueStaticLitMask;
    litState.separateAlphaBlendDefined = true;
    litState.separateAlphaBlendEnable = true;
    litState.separateAlphaBlendSrc = GFXBlendOne;

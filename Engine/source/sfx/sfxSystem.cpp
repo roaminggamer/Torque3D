@@ -182,7 +182,6 @@ static const U32 sDeviceInfoProvider = 0;
 static const U32 sDeviceInfoName = 1;
 static const U32 sDeviceInfoUseHardware = 2;
 static const U32 sDeviceInfoMaxBuffers = 3;
-static const U32 sDeviceInfoCaps = 4;
 
 
 //-----------------------------------------------------------------------------
@@ -199,8 +198,8 @@ SFXSystem::SFXSystem()
       mStatNumVoices( 0 ),
       mStatSourceUpdateTime( 0 ),
       mStatParameterUpdateTime( 0 ),
-      mStatAmbientUpdateTime( 0 ),
       mDistanceModel( SFXDistanceModelLinear ),
+      mStatAmbientUpdateTime( 0 ),
       mDopplerFactor( 0.5 ),
       mRolloffFactor( 1.0 ),
       mSoundscapeMgr( NULL )

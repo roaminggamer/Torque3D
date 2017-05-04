@@ -99,6 +99,12 @@ protected:
    ///
    S32 mProcessIndex;
 
+public:
+
+   // TODO: Make this protected and give it a proper API.
+   const GFXVertexFormat *mVertexFormat;
+
+   // TODO: Make this protected and give it a proper API.
    GFXVertexFormat *mInstancingFormat;
 
 public:   
@@ -139,6 +145,7 @@ public:
    ShaderFeature()
       :  output( NULL ),
          mProcessIndex( 0 ),
+         mVertexFormat( NULL ),
          mInstancingFormat( NULL )
    {
    }
@@ -285,7 +292,7 @@ public:
 
    /// Called after processing the vertex and processing the pixel 
    /// to cleanup any temporary structures stored in the feature.
-   virtual void reset() { output = NULL; mProcessIndex = 0; mInstancingFormat = NULL; }
+   virtual void reset() { output = NULL; mProcessIndex = 0; mInstancingFormat = NULL; mVertexFormat = NULL; }
 
    /// A simpler helper function which either finds
    /// the existing local var or creates one.

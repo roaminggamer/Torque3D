@@ -463,12 +463,12 @@ DefineConsoleFunction( strposr, S32, ( const char* haystack, const char* needle,
    U32 sublen = dStrlen( needle );
    U32 strlen = dStrlen( haystack );
    S32 start = strlen - offset;
-   	
+      
    if(start < 0 || start > strlen)
       return -1;
    
    if (start + sublen > strlen)
-	  start = strlen - sublen;
+     start = strlen - sublen;
    for(; start >= 0; start--)
       if(!dStrncmp(haystack + start, needle, sublen))
          return start;
@@ -1022,15 +1022,15 @@ DefineConsoleFunction( strrchrpos, S32, ( const char* str, const char* chr, S32 
 //----------------------------------------------------------------
 
 DefineConsoleFunction(ColorFloatToInt, ColorI, (ColorF color), ,
-	"Convert from a float color to an integer color (0.0 - 1.0 to 0 to 255).\n"
-	"@param color Float color value to be converted in the form \"R G B A\", where R is red, G is green, B is blue, and A is alpha.\n"
-	"@return Converted color value (0 - 255)\n\n"
-	"@tsexample\n"
-	"ColorFloatToInt( \"0 0 1 0.5\" ) // Returns \"0 0 255 128\".\n"
-	"@endtsexample\n"
-	"@ingroup Strings")
+   "Convert from a float color to an integer color (0.0 - 1.0 to 0 to 255).\n"
+   "@param color Float color value to be converted in the form \"R G B A\", where R is red, G is green, B is blue, and A is alpha.\n"
+   "@return Converted color value (0 - 255)\n\n"
+   "@tsexample\n"
+   "ColorFloatToInt( \"0 0 1 0.5\" ) // Returns \"0 0 255 128\".\n"
+   "@endtsexample\n"
+   "@ingroup Strings")
 {
-	return (ColorI)color;
+   return (ColorI)color;
 }
 
 DefineConsoleFunction(ColorIntToFloat, ColorF, (ColorI color), ,
@@ -1201,8 +1201,8 @@ DefineConsoleFunction( isValidIP, bool, ( const char* str),,
 ConsoleFunction(addCaseSensitiveStrings,void,2,0,"[string1, string2, ...]"
                 "Adds case sensitive strings to the StringTable.")
 {
-	for(int i = 1; i < argc; i++)
-		StringTable->insert(argv[i], true);
+   for(int i = 1; i < argc; i++)
+      StringTable->insert(argv[i], true);
 }
 
 //=============================================================================
@@ -1645,7 +1645,7 @@ DefineConsoleFunction( nextToken, const char*, ( const char* str1, const char* t
    "@endtsexample\n\n"
    "@ingroup Strings" )
 {
-	char buffer[4096];
+   char buffer[4096];
    dStrncpy(buffer, str1, 4096);
    char *str = buffer;
 
@@ -1812,7 +1812,7 @@ DefineEngineFunction( detag, const char*, ( const char* str ),,
       "{\n"
       "   onChatMessage(detag(%msgString), %voice, %pitch);\n"
       "}\n"
-	"@endtsexample\n\n"
+   "@endtsexample\n\n"
 
    "@see \\ref syntaxDataTypes under Tagged %Strings\n"
    "@see getTag()\n"
@@ -2017,8 +2017,8 @@ DefineConsoleFunction( collapseEscape, const char*, ( const char* text ),,
 //-----------------------------------------------------------------------------
 
 DefineEngineFunction( setLogMode, void, ( S32 mode ),,
-	"@brief Determines how log files are written.\n\n"
-	"Sets the operational mode of the console logging system.\n\n"
+   "@brief Determines how log files are written.\n\n"
+   "Sets the operational mode of the console logging system.\n\n"
    "@param mode Parameter specifying the logging mode.  This can be:\n"
       "- 1: Open and close the console log file for each seperate string of output.  This will ensure that all "
          "parts get written out to disk and that no parts remain in intermediate buffers even if the process crashes.\n"
@@ -2030,8 +2030,8 @@ DefineEngineFunction( setLogMode, void, ( S32 mode ),,
       "combined by binary OR with 0x4 to cause the logging system to flush all console log messages that had already been "
       "issued to the console system into the newly created log file.\n\n"
 
-	"@note Xbox 360 does not support logging to a file. Use Platform::OutputDebugStr in C++ instead."
-	"@ingroup Logging" )
+   "@note Xbox 360 does not support logging to a file. Use Platform::OutputDebugStr in C++ instead."
+   "@ingroup Logging" )
 {
    Con::setLogMode( mode );
 }
@@ -2141,13 +2141,18 @@ DefineEngineFunction( gotoWebPage, void, ( const char* address ),,
 
 //-----------------------------------------------------------------------------
 
-DefineEngineFunction( displaySplashWindow, bool, (const char* path), ("art/gui/splash.bmp"),
+DefineEngineFunction( displaySplashWindow, bool, (const char* path), (""),
    "Display a startup splash window suitable for showing while the engine still starts up.\n\n"
    "@note This is currently only implemented on Windows.\n\n"
-   "@param path	relative path to splash screen image to display.\n"
+   "@param path   relative path to splash screen image to display.\n"
    "@return True if the splash window could be successfully initialized.\n\n"
    "@ingroup Platform" )
 {
+   if (path == "")
+   {
+      path = Con::getVariable("$Core::splashWindowImage");
+   }
+
    return Platform::displaySplashWindow(path);
 }
 
@@ -2251,63 +2256,6 @@ ConsoleFunction( call, const char *, 2, 0, "( string functionName, string args..
 static U32 execDepth = 0;
 static U32 journalDepth = 1;
 
-static StringTableEntry getDSOPath(const char *scriptPath)
-{
-#ifndef TORQUE2D_TOOLS_FIXME
-
-   // [tom, 11/17/2006] Force old behavior for the player. May not want to do this.
-   const char *slash = dStrrchr(scriptPath, '/');
-   if(slash != NULL)
-      return StringTable->insertn(scriptPath, slash - scriptPath, true);
-   
-   slash = dStrrchr(scriptPath, ':');
-   if(slash != NULL)
-      return StringTable->insertn(scriptPath, (slash - scriptPath) + 1, true);
-   
-   return "";
-
-#else
-
-   char relPath[1024], dsoPath[1024];
-   bool isPrefs = false;
-
-   // [tom, 11/17/2006] Prefs are handled slightly differently to avoid dso name clashes
-   StringTableEntry prefsPath = Platform::getPrefsPath();
-   if(dStrnicmp(scriptPath, prefsPath, dStrlen(prefsPath)) == 0)
-   {
-      relPath[0] = 0;
-      isPrefs = true;
-   }
-   else
-   {
-      StringTableEntry strippedPath = Platform::stripBasePath(scriptPath);
-      dStrcpy(relPath, strippedPath);
-
-      char *slash = dStrrchr(relPath, '/');
-      if(slash)
-         *slash = 0;
-   }
-
-   const char *overridePath;
-   if(! isPrefs)
-      overridePath = Con::getVariable("$Scripts::OverrideDSOPath");
-   else
-      overridePath = prefsPath;
-
-   if(overridePath && *overridePath)
-      Platform::makeFullPathName(relPath, dsoPath, sizeof(dsoPath), overridePath);
-   else
-   {
-      char t[1024];
-      dSprintf(t, sizeof(t), "compiledScripts/%s", relPath);
-      Platform::makeFullPathName(t, dsoPath, sizeof(dsoPath), Platform::getPrefsPath());
-   }
-
-   return StringTable->insert(dsoPath);
-
-#endif
-}
-
 DefineConsoleFunction( getDSOPath, const char*, ( const char* scriptFileName ),,
    "Get the absolute path to the file in which the compiled code for the given script file will be stored.\n"
    "@param scriptFileName %Path to the .cs script file.\n"
@@ -2320,7 +2268,7 @@ DefineConsoleFunction( getDSOPath, const char*, ( const char* scriptFileName ),,
 {
    Con::expandScriptFilename( scriptFilenameBuffer, sizeof(scriptFilenameBuffer), scriptFileName );
    
-   const char* filename = getDSOPath(scriptFilenameBuffer);
+   const char* filename = Con::getDSOPath(scriptFilenameBuffer);
    if(filename == NULL || *filename == 0)
       return "";
 
@@ -2347,7 +2295,7 @@ DefineEngineFunction( compile, bool, ( const char* fileName, bool overrideNoDSO 
    Con::expandScriptFilename( scriptFilenameBuffer, sizeof( scriptFilenameBuffer ), fileName );
 
    // Figure out where to put DSOs
-   StringTableEntry dsoPath = getDSOPath(scriptFilenameBuffer);
+   StringTableEntry dsoPath = Con::getDSOPath(scriptFilenameBuffer);
    if(dsoPath && *dsoPath == 0)
       return false;
 
@@ -2419,313 +2367,7 @@ DefineEngineFunction( exec, bool, ( const char* fileName, bool noCalls, bool jou
    "@see eval\n"
    "@ingroup Scripting" )
 {
-   bool journal = false;
-
-   execDepth++;
-   if(journalDepth >= execDepth)
-      journalDepth = execDepth + 1;
-   else
-      journal = true;
-
-   bool ret = false;
-
-   if( journalScript && !journal )
-   {
-      journal = true;
-      journalDepth = execDepth;
-   }
-
-   // Determine the filename we actually want...
-   Con::expandScriptFilename( scriptFilenameBuffer, sizeof( scriptFilenameBuffer ), fileName );
-
-   // since this function expects a script file reference, if it's a .dso
-   // lets terminate the string before the dso so it will act like a .cs
-   if(dStrEndsWith(scriptFilenameBuffer, ".dso"))
-   {
-      scriptFilenameBuffer[dStrlen(scriptFilenameBuffer) - dStrlen(".dso")] = '\0';
-   }
-
-   // Figure out where to put DSOs
-   StringTableEntry dsoPath = getDSOPath(scriptFilenameBuffer);
-
-   const char *ext = dStrrchr(scriptFilenameBuffer, '.');
-
-   if(!ext)
-   {
-      // We need an extension!
-      Con::errorf(ConsoleLogEntry::Script, "exec: invalid script file name %s.", scriptFilenameBuffer);
-      execDepth--;
-      return false;
-   }
-
-   // Check Editor Extensions
-   bool isEditorScript = false;
-
-   // If the script file extension is '.ed.cs' then compile it to a different compiled extension
-   if( dStricmp( ext, ".cs" ) == 0 )
-   {
-      const char* ext2 = ext - 3;
-      if( dStricmp( ext2, ".ed.cs" ) == 0 )
-         isEditorScript = true;
-   }
-   else if( dStricmp( ext, ".gui" ) == 0 )
-   {
-      const char* ext2 = ext - 3;
-      if( dStricmp( ext2, ".ed.gui" ) == 0 )
-         isEditorScript = true;
-   }
-
-
-   StringTableEntry scriptFileName = StringTable->insert(scriptFilenameBuffer);
-
-#ifndef TORQUE_OS_XENON
-   // Is this a file we should compile? (anything in the prefs path should not be compiled)
-   StringTableEntry prefsPath = Platform::getPrefsPath();
-   bool compiled = dStricmp(ext, ".mis") && !journal && !Con::getBoolVariable("Scripts::ignoreDSOs");
-
-   // [tom, 12/5/2006] stripBasePath() fucks up if the filename is not in the exe
-   // path, current directory or prefs path. Thus, getDSOFilename() will also screw
-   // up and so this allows the scripts to still load but without a DSO.
-   if(Platform::isFullPath(Platform::stripBasePath(scriptFilenameBuffer)))
-      compiled = false;
-
-   // [tom, 11/17/2006] It seems to make sense to not compile scripts that are in the
-   // prefs directory. However, getDSOPath() can handle this situation and will put
-   // the dso along with the script to avoid name clashes with tools/game dsos.
-   if( (dsoPath && *dsoPath == 0) || (prefsPath && prefsPath[ 0 ] && dStrnicmp(scriptFileName, prefsPath, dStrlen(prefsPath)) == 0) )
-      compiled = false;
-#else
-   bool compiled = false;  // Don't try to compile things on the 360, ignore DSO's when debugging
-                           // because PC prefs will screw up stuff like SFX.
-#endif
-
-   // If we're in a journaling mode, then we will read the script
-   // from the journal file.
-   if(journal && Journal::IsPlaying())
-   {
-      char fileNameBuf[256];
-      bool fileRead = false;
-      U32 fileSize;
-
-      Journal::ReadString(fileNameBuf);
-      Journal::Read(&fileRead);
-
-      if(!fileRead)
-      {
-         Con::errorf(ConsoleLogEntry::Script, "Journal script read (failed) for %s", fileNameBuf);
-         execDepth--;
-         return false;
-      }
-      Journal::Read(&fileSize);
-      char *script = new char[fileSize + 1];
-      Journal::Read(fileSize, script);
-      script[fileSize] = 0;
-      Con::printf("Executing (journal-read) %s.", scriptFileName);
-      CodeBlock *newCodeBlock = new CodeBlock();
-      newCodeBlock->compileExec(scriptFileName, script, noCalls, 0);
-      delete [] script;
-
-      execDepth--;
-      return true;
-   }
-
-   // Ok, we let's try to load and compile the script.
-   Torque::FS::FileNodeRef scriptFile = Torque::FS::GetFileNode(scriptFileName);
-   Torque::FS::FileNodeRef dsoFile;
-   
-//    ResourceObject *rScr = gResourceManager->find(scriptFileName);
-//    ResourceObject *rCom = NULL;
-
-   char nameBuffer[512];
-   char* script = NULL;
-   U32 version;
-
-   Stream *compiledStream = NULL;
-   Torque::Time scriptModifiedTime, dsoModifiedTime;
-
-   // Check here for .edso
-   bool edso = false;
-   if( dStricmp( ext, ".edso" ) == 0  && scriptFile != NULL )
-   {
-      edso = true;
-      dsoFile = scriptFile;
-      scriptFile = NULL;
-
-      dsoModifiedTime = dsoFile->getModifiedTime();
-      dStrcpy( nameBuffer, scriptFileName );
-   }
-
-   // If we're supposed to be compiling this file, check to see if there's a DSO
-   if(compiled && !edso)
-   {
-      const char *filenameOnly = dStrrchr(scriptFileName, '/');
-      if(filenameOnly)
-         ++filenameOnly;
-      else
-         filenameOnly = scriptFileName;
-
-      char pathAndFilename[1024];
-      Platform::makeFullPathName(filenameOnly, pathAndFilename, sizeof(pathAndFilename), dsoPath);
-
-      if( isEditorScript )
-         dStrcpyl(nameBuffer, sizeof(nameBuffer), pathAndFilename, ".edso", NULL);
-      else
-         dStrcpyl(nameBuffer, sizeof(nameBuffer), pathAndFilename, ".dso", NULL);
-
-      dsoFile = Torque::FS::GetFileNode(nameBuffer);
-
-      if(scriptFile != NULL)
-         scriptModifiedTime = scriptFile->getModifiedTime();
-      
-      if(dsoFile != NULL)
-         dsoModifiedTime = dsoFile->getModifiedTime();
-   }
-
-   // Let's do a sanity check to complain about DSOs in the future.
-   //
-   // MM:	This doesn't seem to be working correctly for now so let's just not issue
-   //		the warning until someone knows how to resolve it.
-   //
-   //if(compiled && rCom && rScr && Platform::compareFileTimes(comModifyTime, scrModifyTime) < 0)
-   //{
-      //Con::warnf("exec: Warning! Found a DSO from the future! (%s)", nameBuffer);
-   //}
-
-   // If we had a DSO, let's check to see if we should be reading from it.
-   //MGT: fixed bug with dsos not getting recompiled correctly
-   //Note: Using Nathan Martin's version from the forums since its easier to read and understand
-   if(compiled && dsoFile != NULL && (scriptFile == NULL|| (dsoModifiedTime >= scriptModifiedTime)))
-   { //MGT: end
-      compiledStream = FileStream::createAndOpen( nameBuffer, Torque::FS::File::Read );
-      if (compiledStream)
-      {
-         // Check the version!
-         compiledStream->read(&version);
-         if(version != Con::DSOVersion)
-         {
-            Con::warnf("exec: Found an old DSO (%s, ver %d < %d), ignoring.", nameBuffer, version, Con::DSOVersion);
-            delete compiledStream;
-            compiledStream = NULL;
-         }
-      }
-   }
-
-   // If we're journalling, let's write some info out.
-   if(journal && Journal::IsRecording())
-      Journal::WriteString(scriptFileName);
-
-   if(scriptFile != NULL && !compiledStream)
-   {
-      // If we have source but no compiled version, then we need to compile
-      // (and journal as we do so, if that's required).
-
-      void *data;
-      U32 dataSize = 0;
-      Torque::FS::ReadFile(scriptFileName, data, dataSize, true);
-
-      if(journal && Journal::IsRecording())
-         Journal::Write(bool(data != NULL));
-         
-      if( data == NULL )
-      {
-         Con::errorf(ConsoleLogEntry::Script, "exec: invalid script file %s.", scriptFileName);
-         execDepth--;
-         return false;
-      }
-      else
-      {
-         if( !dataSize )
-         {
-            execDepth --;
-            return false;
-         }
-         
-         script = (char *)data;
-
-         if(journal && Journal::IsRecording())
-         {
-            Journal::Write(dataSize);
-            Journal::Write(dataSize, data);
-         }
-      }
-
-#ifndef TORQUE_NO_DSO_GENERATION
-      if(compiled)
-      {
-         // compile this baddie.
-#ifdef TORQUE_DEBUG
-         Con::printf("Compiling %s...", scriptFileName);
-#endif   
-
-         CodeBlock *code = new CodeBlock();
-         code->compile(nameBuffer, scriptFileName, script);
-         delete code;
-         code = NULL;
-
-         compiledStream = FileStream::createAndOpen( nameBuffer, Torque::FS::File::Read );
-         if(compiledStream)
-         {
-            compiledStream->read(&version);
-         }
-         else
-         {
-            // We have to exit out here, as otherwise we get double error reports.
-            delete [] script;
-            execDepth--;
-            return false;
-         }
-      }
-#endif
-   }
-   else
-   {
-      if(journal && Journal::IsRecording())
-         Journal::Write(bool(false));
-   }
-
-   if(compiledStream)
-   {
-      // Delete the script object first to limit memory used
-      // during recursive execs.
-      delete [] script;
-      script = 0;
-
-      // We're all compiled, so let's run it.
-#ifdef TORQUE_DEBUG
-      Con::printf("Loading compiled script %s.", scriptFileName);
-#endif   
-      CodeBlock *code = new CodeBlock;
-      code->read(scriptFileName, *compiledStream);
-      delete compiledStream;
-      code->exec(0, scriptFileName, NULL, 0, NULL, noCalls, NULL, 0);
-      ret = true;
-   }
-   else
-      if(scriptFile)
-      {
-         // No compiled script,  let's just try executing it
-         // directly... this is either a mission file, or maybe
-         // we're on a readonly volume.
-#ifdef TORQUE_DEBUG
-         Con::printf("Executing %s.", scriptFileName);
-#endif   
-
-         CodeBlock *newCodeBlock = new CodeBlock();
-         StringTableEntry name = StringTable->insert(scriptFileName);
-
-         newCodeBlock->compileExec(name, script, noCalls, 0);
-         ret = true;
-      }
-      else
-      {
-         // Don't have anything.
-         Con::warnf(ConsoleLogEntry::Script, "Missing file: %s!", scriptFileName);
-         ret = false;
-      }
-
-   delete [] script;
-   execDepth--;
-   return ret;
+   return Con::executeFile(fileName, noCalls, journalScript);
 }
 
 DefineConsoleFunction( eval, const char*, ( const char* consoleString ), , "eval(consoleString)" )
@@ -2753,19 +2395,19 @@ DefineConsoleFunction( setVariable, void, ( const char* varName, const char* val
 }
 
 DefineConsoleFunction( isFunction, bool, ( const char* funcName ), , "(string funcName)" 
-	"@brief Determines if a function exists or not\n\n"
-	"@param funcName String containing name of the function\n"
-	"@return True if the function exists, false if not\n"
-	"@ingroup Scripting")
+   "@brief Determines if a function exists or not\n\n"
+   "@param funcName String containing name of the function\n"
+   "@return True if the function exists, false if not\n"
+   "@ingroup Scripting")
 {
    return Con::isFunction(funcName);
 }
 
 DefineConsoleFunction( getFunctionPackage, const char*, ( const char* funcName ), , "(string funcName)" 
-	"@brief Provides the name of the package the function belongs to\n\n"
-	"@param funcName String containing name of the function\n"
-	"@return The name of the function's package\n"
-	"@ingroup Packages")
+   "@brief Provides the name of the package the function belongs to\n\n"
+   "@param funcName String containing name of the function\n"
+   "@return The name of the function's package\n"
+   "@ingroup Packages")
 {
    Namespace::Entry* nse = Namespace::global()->lookup( StringTable->insert( funcName ) );
    if( !nse )
@@ -2775,11 +2417,11 @@ DefineConsoleFunction( getFunctionPackage, const char*, ( const char* funcName )
 }
 
 DefineConsoleFunction( isMethod, bool, ( const char* nameSpace, const char* method ), , "(string namespace, string method)" 
-	"@brief Determines if a class/namespace method exists\n\n"
-	"@param namespace Class or namespace, such as Player\n"
-	"@param method Name of the function to search for\n"
-	"@return True if the method exists, false if not\n"
-	"@ingroup Scripting\n")
+   "@brief Determines if a class/namespace method exists\n\n"
+   "@param namespace Class or namespace, such as Player\n"
+   "@param method Name of the function to search for\n"
+   "@return True if the method exists, false if not\n"
+   "@ingroup Scripting\n")
 {
    Namespace* ns = Namespace::find( StringTable->insert( nameSpace ) );
    Namespace::Entry* nse = ns->lookup( StringTable->insert( method ) );
@@ -2790,11 +2432,11 @@ DefineConsoleFunction( isMethod, bool, ( const char* nameSpace, const char* meth
 }
 
 DefineConsoleFunction( getMethodPackage, const char*, ( const char* nameSpace, const char* method ), , "(string namespace, string method)" 
-	"@brief Provides the name of the package the method belongs to\n\n"
-	"@param namespace Class or namespace, such as Player\n"
-	"@param method Name of the funciton to search for\n"
-	"@return The name of the method's package\n"
-	"@ingroup Packages")
+   "@brief Provides the name of the package the method belongs to\n\n"
+   "@param namespace Class or namespace, such as Player\n"
+   "@param method Name of the funciton to search for\n"
+   "@return The name of the method's package\n"
+   "@ingroup Packages")
 {
    Namespace* ns = Namespace::find( StringTable->insert( nameSpace ) );
    if( !ns )
@@ -2808,13 +2450,13 @@ DefineConsoleFunction( getMethodPackage, const char*, ( const char* nameSpace, c
 }
 
 DefineConsoleFunction( isDefined, bool, ( const char* varName, const char* varValue ), ("") , "(string varName)" 
-	"@brief Determines if a variable exists and contains a value\n"
-	"@param varName Name of the variable to search for\n"
-	"@return True if the variable was defined in script, false if not\n"
+   "@brief Determines if a variable exists and contains a value\n"
+   "@param varName Name of the variable to search for\n"
+   "@return True if the variable was defined in script, false if not\n"
    "@tsexample\n"
       "isDefined( \"$myVar\" );\n"
    "@endtsexample\n\n"
-	"@ingroup Scripting")
+   "@ingroup Scripting")
 {
    if(String::isEmpty(varName))
    {
@@ -2953,10 +2595,10 @@ DefineConsoleFunction( isCurrentScriptToolScript, bool, (), , "()"
 }
 
 DefineConsoleFunction( getModNameFromPath, const char *, ( const char* path ), , "(string path)" 
-				"@brief Attempts to extract a mod directory from path. Returns empty string on failure.\n\n"
-				"@param File path of mod folder\n"
-				"@note This is no longer relevant in Torque 3D (which does not use mod folders), should be deprecated\n"
-				"@internal")
+            "@brief Attempts to extract a mod directory from path. Returns empty string on failure.\n\n"
+            "@param File path of mod folder\n"
+            "@note This is no longer relevant in Torque 3D (which does not use mod folders), should be deprecated\n"
+            "@internal")
 {
    StringTableEntry modPath = Con::getModNameFromPath(path);
    return modPath ? modPath : "";
@@ -2965,11 +2607,11 @@ DefineConsoleFunction( getModNameFromPath, const char *, ( const char* path ), ,
 //-----------------------------------------------------------------------------
 
 DefineConsoleFunction( pushInstantGroup, void, ( String group ),("") , "([group])" 
-				"@brief Pushes the current $instantGroup on a stack "
-				"and sets it to the given value (or clears it).\n\n"
-				"@note Currently only used for editors\n"
-				"@ingroup Editors\n"
-				"@internal")
+            "@brief Pushes the current $instantGroup on a stack "
+            "and sets it to the given value (or clears it).\n\n"
+            "@note Currently only used for editors\n"
+            "@ingroup Editors\n"
+            "@internal")
 {
    if( group.size() > 0 )
       Con::pushInstantGroup( group );
@@ -2978,10 +2620,10 @@ DefineConsoleFunction( pushInstantGroup, void, ( String group ),("") , "([group]
 }
 
 DefineConsoleFunction( popInstantGroup, void, (), , "()" 
-				"@brief Pop and restore the last setting of $instantGroup off the stack.\n\n"
-				"@note Currently only used for editors\n\n"
-				"@ingroup Editors\n"
-				"@internal")
+            "@brief Pop and restore the last setting of $instantGroup off the stack.\n\n"
+            "@note Currently only used for editors\n\n"
+            "@ingroup Editors\n"
+            "@internal")
 {
    Con::popInstantGroup();
 }
@@ -2989,8 +2631,8 @@ DefineConsoleFunction( popInstantGroup, void, (), , "()"
 //-----------------------------------------------------------------------------
 
 DefineConsoleFunction( getPrefsPath, const char *, ( const char* relativeFileName ), (""), "([relativeFileName])" 
-				"@note Appears to be useless in Torque 3D, should be deprecated\n"
-				"@internal")
+            "@note Appears to be useless in Torque 3D, should be deprecated\n"
+            "@internal")
 {
    const char *filename = Platform::getPrefsPath(relativeFileName);
    if(filename == NULL || *filename == 0)
@@ -3002,13 +2644,13 @@ DefineConsoleFunction( getPrefsPath, const char *, ( const char* relativeFileNam
 //-----------------------------------------------------------------------------
 
 ConsoleFunction( execPrefs, bool, 2, 4, "( string relativeFileName, bool noCalls=false, bool journalScript=false )"
-				"@brief Manually execute a special script file that contains game or editor preferences\n\n"
-				"@param relativeFileName Name and path to file from project folder\n"
-				"@param noCalls Deprecated\n"
-				"@param journalScript Deprecated\n"
-				"@return True if script was successfully executed\n"
-				"@note Appears to be useless in Torque 3D, should be deprecated\n"
-				"@ingroup Scripting")
+            "@brief Manually execute a special script file that contains game or editor preferences\n\n"
+            "@param relativeFileName Name and path to file from project folder\n"
+            "@param noCalls Deprecated\n"
+            "@param journalScript Deprecated\n"
+            "@return True if script was successfully executed\n"
+            "@note Appears to be useless in Torque 3D, should be deprecated\n"
+            "@ingroup Scripting")
 {
    const char *filename = Platform::getPrefsPath(argv[1]);
    if(filename == NULL || *filename == 0)
@@ -3149,8 +2791,8 @@ DefineEngineFunction( isToolBuild, bool, (),,
 }
 
 DefineEngineFunction( getMaxDynamicVerts, S32, (),,
-	"Get max number of allowable dynamic vertices in a single vertex buffer.\n\n"
-	"@return the max number of allowable dynamic vertices in a single vertex buffer" )
+   "Get max number of allowable dynamic vertices in a single vertex buffer.\n\n"
+   "@return the max number of allowable dynamic vertices in a single vertex buffer" )
 {
    return MAX_DYNAMIC_VERTS / 2;
 }

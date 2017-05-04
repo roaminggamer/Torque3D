@@ -150,8 +150,8 @@ DeclareFeatureType( MFT_Fog );
 DeclareFeatureType( MFT_HDROut );
 
 ///
-DeclareFeatureType( MFT_PrePassConditioner );
-DeclareFeatureType( MFT_InterlacedPrePass );
+DeclareFeatureType( MFT_DeferredConditioner );
+DeclareFeatureType( MFT_InterlacedDeferred );
 
 /// This feature causes MFT_ToneMap and MFT_LightMap to output their light color
 /// to the second render-target
@@ -178,6 +178,8 @@ DeclareFeatureType( MFT_ForwardShading );
 /// A special vertex feature which unpacks the imposter vertex
 /// so that the rest of the material features can work on it.
 DeclareFeatureType( MFT_ImposterVert );
+
+DeclareFeatureType( MFT_HardwareSkinning );
 
 
 // Deferred Shading

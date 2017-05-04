@@ -76,7 +76,7 @@ bool BtBody::init(   PhysicsCollision *shape,
    AssertFatal( shape, "BtBody::init - Got a null collision shape!" );
    AssertFatal( dynamic_cast<BtCollision*>( shape ), "BtBody::init - The collision shape is the wrong type!" );
    AssertFatal( ((BtCollision*)shape)->getShape(), "BtBody::init - Got empty collision shape!" );
-	 
+    
    // Cleanup any previous actor.
    _releaseActor();
 
@@ -97,20 +97,20 @@ bool BtBody::init(   PhysicsCollision *shape,
 
          btScalar *masses = new btScalar[ btCompound->getNumChildShapes() ];
          for ( U32 j=0; j < btCompound->getNumChildShapes(); j++ )
-	         masses[j] = mass / btCompound->getNumChildShapes();
+            masses[j] = mass / btCompound->getNumChildShapes();
 
          btVector3 principalInertia;
          btTransform principal;
          btCompound->calculatePrincipalAxisTransform( masses, principal, principalInertia );
          delete [] masses;
 
-	      // Create a new compound with the shifted children.
-	      btColShape = mCompound = new btCompoundShape();
-	      for ( U32 i=0; i < btCompound->getNumChildShapes(); i++ )
-	      {
-		      btTransform newChildTransform = principal.inverse() * btCompound->getChildTransform(i);
-		      mCompound->addChildShape( newChildTransform, btCompound->getChildShape(i) );
-	      }
+         // Create a new compound with the shifted children.
+         btColShape = mCompound = new btCompoundShape();
+         for ( U32 i=0; i < btCompound->getNumChildShapes(); i++ )
+         {
+            btTransform newChildTransform = principal.inverse() * btCompound->getChildTransform(i);
+            mCompound->addChildShape( newChildTransform, btCompound->getChildShape(i) );
+         }
 
          localXfm = btCast<MatrixF>( principal );
       }
@@ -353,6 +353,35 @@ void BtBody::applyImpulse( const Point3F &origin, const Point3F &force )
       mActor->applyImpulse( btCast<btVector3>( force ), btCast<btVector3>( localOrigin ) );
 
    if ( !mActor->isActive() )
+      mActor->activate();
+}
+
+void BtBody::applyTorque( const Point3F &torque )
+{
+   AssertFatal(mActor, "BtBody::applyTorque - The actor is null!");
+   AssertFatal(isDynamic(), "BtBody::applyTorque - This call is only for dynamics!");
+
+   mActor->applyTorque( btCast<btVector3>(torque) );
+
+   if (!mActor->isActive())
+      mActor->activate();
+}
+
+void BtBody::applyForce( const Point3F &force )
+{
+   AssertFatal(mActor, "BtBody::applyForce - The actor is null!");
+   AssertFatal(isDynamic(), "BtBody::applyForce - This call is only for dynamics!");
+
+   if (mCenterOfMass)
+   {
+      Point3F relForce(force);
+      mCenterOfMass->mulV(relForce);
+      mActor->applyCentralForce(btCast<btVector3>(relForce));
+   }
+   else
+      mActor->applyCentralForce(btCast<btVector3>(force));
+
+   if (!mActor->isActive())
       mActor->activate();
 }
 

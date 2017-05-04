@@ -83,12 +83,12 @@ GFX_ImplementTextureProfile( ShadowMapZProfile,
 
 LightShadowMap::LightShadowMap( LightInfo *light )
    :  mWorldToLightProj( true ),
-      mLight( light ),
       mTexSize( 0 ),
-      mLastShader( NULL ),
+      mLight( light ),
       mLastUpdate( 0 ),
-      mLastCull( 0 ),
+      mLastShader( NULL ),
       mIsViewDependent( false ),
+      mLastCull( 0 ),
       mLastScreenSize( 0.0f ),
       mLastPriority( 0.0f ),
       mIsDynamic( false )
@@ -304,13 +304,16 @@ bool LightShadowMap::setTextureStage( U32 currTexFlag, LightingShaderConstants* 
    return false;
 }
 
-void LightShadowMap::render(  RenderPassManager* renderPass,
-                              const SceneRenderState *diffuseState,
-                              bool _dynamic)
+void LightShadowMap::render(RenderPassManager* renderPass,
+   const SceneRenderState *diffuseState,
+   bool _dynamic, bool _forceUpdate)
 {
-    //  control how often shadow maps are refreshed
-    if (!_dynamic && (mStaticRefreshTimer->getElapsedMs() < getLightInfo()->getStaticRefreshFreq()))
-        return;
+   if (!_forceUpdate)
+   {
+      //  control how often shadow maps are refreshed
+      if (!_dynamic && (mStaticRefreshTimer->getElapsedMs() < getLightInfo()->getStaticRefreshFreq()))
+         return;
+   }
     mStaticRefreshTimer->reset();
 
     /* TODO: find out why this is causing issue with translucent objects
@@ -516,7 +519,7 @@ void LightingShaderConstants::init(GFXShader* shader)
    mLightSpotParamsSC = shader->getShaderConstHandle("$lightSpotParams");
 
    // NOTE: These are the shader constants used for doing lighting 
-   // during the forward pass.  Do not confuse these for the prepass
+   // during the forward pass.  Do not confuse these for the deferred
    // lighting constants which are used from AdvancedLightBinManager.
    mLightPositionSC = shader->getShaderConstHandle( ShaderGenVars::lightPosition );
    mLightDiffuseSC = shader->getShaderConstHandle( ShaderGenVars::lightDiffuse );
@@ -577,8 +580,8 @@ MODULE_END;
 LightInfoExType ShadowMapParams::Type( "" );
 
 ShadowMapParams::ShadowMapParams( LightInfo *light ) 
-   :  mLight( light ),
-      mShadowMap( NULL ),
+   :  mShadowMap( NULL ),
+      mLight( light ),
       mDynamicShadowMap ( NULL ),
       isDynamic ( true )
 {

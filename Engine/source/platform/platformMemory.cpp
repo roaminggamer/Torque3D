@@ -53,7 +53,8 @@ void * gMemMutex = NULL;
 #undef new
 #endif
 
-enum MemConstants {
+enum MemConstants : U32
+{
    Allocated            = BIT(0),
    Array                = BIT(1),
    DebugFlag            = BIT(2),
@@ -227,8 +228,8 @@ struct HeapIterator
 
    HeapIterator( bool allocatedOnly = true )
       : mCurrentPage( gPageList ),
-        mAllocatedOnly( allocatedOnly ),
-        mCurrentHeader( NULL )
+        mCurrentHeader( NULL ),
+        mAllocatedOnly( allocatedOnly )
    {
       if( mCurrentPage )
       {

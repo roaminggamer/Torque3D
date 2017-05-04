@@ -236,7 +236,7 @@ void BumpFeatGLSL::setTexData(   Material::StageData &stageDat,
 
 
 ParallaxFeatGLSL::ParallaxFeatGLSL()
-   : mIncludeDep( "shaders/common/gl/torque.glsl" )
+   : mIncludeDep(String(Con::getVariable("$Core::CommonShaderPath")) + String("/gl/torque.glsl" ))
 {
    addDependency( &mIncludeDep );
 }
@@ -290,14 +290,6 @@ void ParallaxFeatGLSL::processVert( Vector<ShaderComponent*> &componentList,
    outNegViewTS->setType( "vec3" );
    meta->addStatement( new GenOp( "   @ = tMul( @, float3( @.xyz - @ ) );\r\n", 
       outNegViewTS, objToTangentSpace, inPos, eyePos ) );
-
-   // TODO: I'm at a loss at why i need to flip the binormal/y coord
-   // to get a good view vector for parallax. Lighting works properly
-   // with the TS matrix as is... but parallax does not.
-   //
-   // Someone figure this out!
-   //
-   meta->addStatement( new GenOp( "   @.y = -@.y;\r\n", outNegViewTS, outNegViewTS ) );  
 
    // If we have texture anim matrix the tangent
    // space view vector may need to be rotated.
@@ -373,9 +365,9 @@ ShaderFeature::Resources ParallaxFeatGLSL::getResources( const MaterialFeatureDa
    // We add the outViewTS to the outputstructure.
    res.numTexReg = 1;
 	
-   // If this isn't a prepass then we will be
+   // If this isn't a deferred then we will be
    // creating the normal map here.
-   if ( !fd.features.hasFeature( MFT_PrePassConditioner ) )
+   if ( !fd.features.hasFeature( MFT_DeferredConditioner ) )
       res.numTex = 1;
 	
    return res;

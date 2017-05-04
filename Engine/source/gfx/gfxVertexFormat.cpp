@@ -37,6 +37,9 @@ namespace GFXSemantic
    const String TANGENTW = String( "TANGENTW" ).intern();
    const String COLOR = String( "COLOR" ).intern();
    const String TEXCOORD = String( "TEXCOORD" ).intern();
+   const String BLENDINDICES = String( "BLENDINDICES" ).intern();
+   const String BLENDWEIGHT = String( "BLENDWEIGHT" ).intern();
+   const String PADDING = String( "PADDING" ).intern();
 }
 
 
@@ -59,6 +62,9 @@ U32 GFXVertexElement::getSizeInBytes() const
       case GFXDeclType_Color:
          return 4;
 
+      case GFXDeclType_UByte4:
+         return 4;
+
       default:
          return 0;
    };
@@ -67,8 +73,8 @@ U32 GFXVertexElement::getSizeInBytes() const
 
 GFXVertexFormat::GFXVertexFormat()
    :  mDirty( true ),
-      mHasColor( false ),
       mHasNormal( false ),
+      mHasColor( false ),
       mHasTangent( false ),
       mHasInstancing( false ),
       mTexCoordCount( 0 ),
@@ -85,6 +91,7 @@ void GFXVertexFormat::copy( const GFXVertexFormat &format )
    mHasTangent = format.mHasTangent;
    mHasColor = format.mHasColor;
    mHasInstancing = format.mHasInstancing;
+   mHasBlendIndices = format.mHasBlendIndices;
    mTexCoordCount = format.mTexCoordCount;
    mSizeInBytes = format.mSizeInBytes;
    mDescription = format.mDescription;
@@ -171,6 +178,35 @@ bool GFXVertexFormat::hasInstancing() const
    return mHasInstancing;
 }
 
+bool GFXVertexFormat::hasBlendIndices() const
+{
+   if ( mDirty )
+      const_cast<GFXVertexFormat*>(this)->_updateDirty();
+   
+   return mHasBlendIndices;
+}
+
+U32 GFXVertexFormat::getNumBlendIndices() const
+{
+   if ( mDirty )
+      const_cast<GFXVertexFormat*>(this)->_updateDirty();
+   
+   if ( !mHasBlendIndices )
+      return 0;
+
+   U32 numIndices = 0;
+   
+   for ( U32 i=0; i < mElements.size(); i++ )
+   {
+      const GFXVertexElement &element = mElements[i];
+
+      if ( element.isSemantic( GFXSemantic::BLENDINDICES ) )
+         numIndices++;
+   }
+
+   return numIndices;
+}
+
 U32 GFXVertexFormat::getTexCoordCount() const
 {
    if ( mDirty )
@@ -199,6 +235,7 @@ void GFXVertexFormat::_updateDirty()
    mTexCoordCount = 0;
 
    mHasColor = false;
+   mHasBlendIndices = false;
    mHasNormal = false;
    mHasTangent = false;
    mSizeInBytes = 0;
@@ -222,6 +259,8 @@ void GFXVertexFormat::_updateDirty()
          mHasColor = true;
       else if ( element.isSemantic( GFXSemantic::TEXCOORD ) )
          ++mTexCoordCount;
+      else if ( element.isSemantic( GFXSemantic::BLENDINDICES ) )
+         mHasBlendIndices = true;
 
       mSizeInBytes += element.getSizeInBytes();
    }

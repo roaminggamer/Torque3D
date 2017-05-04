@@ -49,8 +49,8 @@ F32 SceneCullingState::smOccluderMinHeightPercentage = 0.1f;
 SceneCullingState::SceneCullingState( SceneManager* sceneManager, const SceneCameraState& viewState )
    : mSceneManager( sceneManager ),
      mCameraState( viewState ),
-     mDisableZoneCulling( smDisableZoneCulling ),
-     mDisableTerrainOcclusion( smDisableTerrainOcclusion )
+     mDisableTerrainOcclusion( smDisableTerrainOcclusion ),
+     mDisableZoneCulling( smDisableZoneCulling )
 {
    AssertFatal( sceneManager->getZoneManager(), "SceneCullingState::SceneCullingState - SceneManager must have a zone manager!" );
 
@@ -384,11 +384,6 @@ bool SceneCullingState::createCullingVolume( const Point3F* vertices, U32 numVer
 
          if( cosAngle > 0.1f )
             continue;
-
-         //TODO
-
-         const Point3F addNormals = currentPlane + lastPlane;
-         const Point3F crossNormals = mCross( currentPlane, lastPlane );
 
          Point3F newNormal = currentPlane + lastPlane;//addNormals - mDot( addNormals, crossNormals ) * crossNormals;
 

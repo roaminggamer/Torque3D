@@ -82,7 +82,7 @@ struct LightingShaderConstants
    
    // NOTE: These are the shader constants used for doing 
    // lighting  during the forward pass.  Do not confuse 
-   // these for the prepass lighting constants which are 
+   // these for the deferred lighting constants which are 
    // used from AdvancedLightBinManager.
    GFXShaderConstHandle *mLightPositionSC;
    GFXShaderConstHandle *mLightDiffuseSC;
@@ -163,7 +163,7 @@ public:
 
    void render(   RenderPassManager* renderPass,
                   const SceneRenderState *diffuseState,
-                  bool _dynamic);
+                  bool _dynamic, bool _forceUpdate);
 
    U32 getLastUpdate() const { return mLastUpdate; }
 

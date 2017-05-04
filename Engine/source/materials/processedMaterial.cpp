@@ -288,9 +288,9 @@ void ProcessedMaterial::_initPassStateBlock( RenderPassData *rpd, GFXStateBlockD
       }
    }
 
-   // The prepass will take care of writing to the 
+   // The deferred will take care of writing to the 
    // zbuffer, so we don't have to by default.
-   if (  MATMGR->getPrePassEnabled() && 
+   if (  MATMGR->getDeferredEnabled() && 
          !mFeatures.hasFeature(MFT_ForwardShading))
       result.setZReadWrite( result.zEnable, false );
 
@@ -350,7 +350,7 @@ U32 ProcessedMaterial::_getRenderStateIndex( const SceneRenderState *sceneState,
    if ( sceneState && sceneState->isReflectPass() )
       currState |= RenderPassData::STATE_REFLECT;
 
-   if ( sgData.binType != SceneData::PrePassBin &&
+   if ( sgData.binType != SceneData::DeferredBin &&
         mMaterial->isTranslucent() )
       currState |= RenderPassData::STATE_TRANSLUCENT;
 
@@ -392,7 +392,10 @@ void ProcessedMaterial::_setStageData()
          mStages[i].setTex( MFT_DiffuseMap, _createTexture( mMaterial->mDiffuseMapFilename[i], &GFXDefaultStaticDiffuseProfile ) );
          if (!mStages[i].getTex( MFT_DiffuseMap ))
          {
-            mMaterial->logError("Failed to load diffuse map %s for stage %i", _getTexturePath(mMaterial->mDiffuseMapFilename[i]).c_str(), i);
+            //If we start with a #, we're probably actually attempting to hit a named target and it may not get a hit on the first pass. So we'll
+            //pass on the error rather than spamming the console
+            if (!mMaterial->mDiffuseMapFilename[i].startsWith("#"))
+               mMaterial->logError("Failed to load diffuse map %s for stage %i", _getTexturePath(mMaterial->mDiffuseMapFilename[i]).c_str(), i);
             
             // Load a debug texture to make it clear to the user 
             // that the texture for this stage was missing.

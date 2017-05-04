@@ -80,7 +80,7 @@ EndImplementEnumType;
 ImplementEnumType( ShapeBaseImageLightType,
    "@brief The type of light to attach to this ShapeBaseImage.\n\n"
    "@ingroup gameObjects\n\n")
-	{ ShapeBaseImageData::NoLight,           "NoLight", "No light is attached.\n" },
+   { ShapeBaseImageData::NoLight,           "NoLight", "No light is attached.\n" },
    { ShapeBaseImageData::ConstantLight,     "ConstantLight", "A constant emitting light is attached.\n" },
    { ShapeBaseImageData::SpotLight,         "SpotLight", "A spotlight is attached.\n" },
    { ShapeBaseImageData::PulsingLight,      "PulsingLight", "A pusling light is attached.\n" },
@@ -97,14 +97,14 @@ ConsoleDocClass( ShapeBaseImageData,
    "@ingroup gameObjects\n"
 );
 
-IMPLEMENT_CALLBACK( ShapeBaseImageData, onMount, void, ( ShapeBase* obj, S32 slot, F32 dt ), ( obj, slot, dt ),
+IMPLEMENT_CALLBACK( ShapeBaseImageData, onMount, void, ( SceneObject* obj, S32 slot, F32 dt ), ( obj, slot, dt ),
    "@brief Called when the Image is first mounted to the object.\n\n"
 
    "@param obj object that this Image has been mounted to\n"
    "@param slot Image mount slot on the object\n"
    "@param dt time remaining in this Image update\n" );
 
-IMPLEMENT_CALLBACK( ShapeBaseImageData, onUnmount, void, ( ShapeBase* obj, S32 slot, F32 dt ), ( obj, slot, dt ),
+IMPLEMENT_CALLBACK( ShapeBaseImageData, onUnmount, void, ( SceneObject* obj, S32 slot, F32 dt ), ( obj, slot, dt ),
    "@brief Called when the Image is unmounted from the object.\n\n"
 
    "@param obj object that this Image has been unmounted from\n"
@@ -189,7 +189,7 @@ ShapeBaseImageData::ShapeBaseImageData()
    lightRadius = 10.f;
    lightBrightness = 1.0f;
 
-   shapeName = "";
+   shapeName = "core/art/shapes/noshape.dts";
    shapeNameFP = "";
    imageAnimPrefix = "";
    imageAnimPrefixFP = "";
@@ -1532,7 +1532,7 @@ bool ShapeBase::unmountImage(U32 imageSlot)
 {
    AssertFatal(imageSlot<MaxMountedImages,"Out of range image slot");
 
-	bool returnValue = false;
+   bool returnValue = false;
    MountedImage& image = mMountedImageList[imageSlot];
    if (image.dataBlock)
    {
@@ -2638,7 +2638,7 @@ void ShapeBase::setImageState(U32 imageSlot, U32 newState,bool force)
       F32 randomPos = Platform::getRandom();
       for (U32 i=0; i<ShapeBaseImageData::MaxShapes; ++i)
       {
-         if (!image.dataBlock->shapeIsValid[i] || i != imageShapeIndex && !image.doAnimateAllShapes)
+         if (!image.dataBlock->shapeIsValid[i] || (i != imageShapeIndex && !image.doAnimateAllShapes))
             continue;
 
          if (image.animThread[i] && image.state->sequence[i] != -1 && image.state->flashSequence[i]) {
@@ -2772,14 +2772,14 @@ void ShapeBase::setImageState(U32 imageSlot, U32 newState,bool force)
    if( stateData.sound && isGhost() )
    {
       const Point3F& velocity         = getVelocity();
-	   image.addSoundSource(SFX->createSource( stateData.sound, &getRenderTransform(), &velocity )); 
+      image.addSoundSource(SFX->createSource( stateData.sound, &getRenderTransform(), &velocity )); 
    }
 
    // Play animation
    updateAnimThread(imageSlot, imageShapeIndex, lastState);
    for (U32 i=0; i<ShapeBaseImageData::MaxShapes; ++i)
    {
-      if (!image.dataBlock->shapeIsValid[i] || i != imageShapeIndex && !image.doAnimateAllShapes)
+      if (!image.dataBlock->shapeIsValid[i] || (i != imageShapeIndex && !image.doAnimateAllShapes))
          continue;
 
       // Start spin thread
@@ -2834,7 +2834,7 @@ void ShapeBase::updateAnimThread(U32 imageSlot, S32 imageShapeIndex, ShapeBaseIm
    F32 randomPos = Platform::getRandom();
    for (U32 i=0; i<ShapeBaseImageData::MaxShapes; ++i)
    {
-      if (!image.dataBlock->shapeIsValid[i] || i != imageShapeIndex && !image.doAnimateAllShapes)
+      if (!image.dataBlock->shapeIsValid[i] || (i != imageShapeIndex && !image.doAnimateAllShapes))
          continue;
 
       if (image.animThread[i] && stateData.sequence[i] != -1) 
@@ -3076,7 +3076,7 @@ TICKAGAIN:
    U32 imageShapeIndex = getImageShapeIndex(image);
    for (U32 i=0; i<ShapeBaseImageData::MaxShapes; ++i)
    {
-      if (!image.dataBlock->shapeIsValid[i] || i != imageShapeIndex && !image.doAnimateAllShapes)
+      if (!image.dataBlock->shapeIsValid[i] || (i != imageShapeIndex && !image.doAnimateAllShapes))
          continue;
 
       if (image.spinThread[i])
@@ -3131,7 +3131,7 @@ void ShapeBase::updateImageAnimation(U32 imageSlot, F32 dt)
    // Advance animation threads
    for (U32 i=0; i<ShapeBaseImageData::MaxShapes; ++i)
    {
-      if (!image.dataBlock->shapeIsValid[i] || i != imageShapeIndex && !image.doAnimateAllShapes)
+      if (!image.dataBlock->shapeIsValid[i] || (i != imageShapeIndex && !image.doAnimateAllShapes))
          continue;
 
       if (image.ambientThread[i])

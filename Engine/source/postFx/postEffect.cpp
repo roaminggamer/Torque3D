@@ -154,7 +154,6 @@ GFX_ImplementTextureProfile( VRTextureProfile,
 GFX_ImplementTextureProfile( VRDepthProfile,
                             GFXTextureProfile::DiffuseMap,
                             GFXTextureProfile::PreserveSize |
-                            GFXTextureProfile::RenderTarget |
                             GFXTextureProfile::NoMipmap |
                             GFXTextureProfile::ZTarget,
                             GFXTextureProfile::NONE );
@@ -267,21 +266,21 @@ PostEffect::PostEffect()
    :  mRenderTime( PFXAfterDiffuse ),
       mRenderPriority( 1.0 ),
       mEnabled( false ),
-      mSkip( false ),
-      mUpdateShader( true ),
       mStateBlockData( NULL ),
+      mUpdateShader( true ),
+      mSkip( false ),
       mAllowReflectPass( false ),
       mTargetClear( PFXTargetClear_None ),
-      mTargetViewport( PFXTargetViewport_TargetSize ),
       mTargetScale( Point2F::One ),
+      mTargetViewport( PFXTargetViewport_TargetSize ),
       mTargetSize( Point2I::Zero ),
       mTargetFormat( GFXFormatR8G8B8A8 ),
       mTargetClearColor( ColorF::BLACK ),
       mOneFrameOnly( false ),
       mOnThisFrame( true ),
-      mShaderReloadKey( 0 ),
-      mIsValid( false ),
       mRTSizeSC( NULL ),
+      mIsValid( false ),
+      mShaderReloadKey( 0 ),
       mOneOverRTSizeSC( NULL ),
       mViewportOffsetSC( NULL ),
       mTargetViewportSC( NULL ),
@@ -411,10 +410,6 @@ bool PostEffect::onAdd()
             texFilename[0] == '$' ||
             texFilename[0] == '#' )
          continue;
-
-      // If '/', then path is specified, open normally
-      if ( texFilename[0] != '/' )
-         texFilename = scriptPath.getFullPath() + '/' + texFilename;
 
       // Try to load the texture.
       bool success = mTextures[i].set( texFilename, &PostFxTextureProfile, avar( "%s() - (line %d)", __FUNCTION__, __LINE__ ) );
@@ -1185,19 +1180,6 @@ void PostEffect::process(  const SceneRenderState *state,
 
    if ( mTargetTex || mTargetDepthStencil )
    {
-
-#ifdef TORQUE_OS_XENON
-      // You may want to disable this functionality for speed reasons as it does
-      // add some overhead. The upside is it makes things "just work". If you
-      // re-work your post-effects properly, this is not needed.
-      //
-      // If this post effect doesn't alpha blend to the back-buffer, than preserve
-      // the active render target contents so they are still around the next time
-      // that render target activates
-      if(!mStateBlockData->getState().blendEnable)
-         GFX->getActiveRenderTarget()->preserve();
-#endif
-
       const RectI &oldViewport = GFX->getViewport();
       GFXTarget *oldTarget = GFX->getActiveRenderTarget();
 
